@@ -1,118 +1,67 @@
-
-# -------------------
-# 中国DNS（公共递归 DNS / DoH / DoT）
-# -------------------
-
-DOMAIN-SUFFIX,dns.cn # CNNIC / 公共递归门户
-
-# 114DNS 公共递归 DNS（114.114.114.114 / 114.114.115.115；官方无 DoH 文档，仅保留社区常用端点）
-DOMAIN,dns.114dns.com # 114DNS - DoH（dns.114dns.com/dns-query）
-DOMAIN,doh.114dns.com # 114DNS - DoH（doh.114dns.com/dns-query）
-DOMAIN-SUFFIX,dns114.cn # 114DNS - DoT（tls.dns114.cn 等）
-
-# 阿里云公共 DNS（AliDNS：223.5.5.5 / 223.6.6.6；官方 DoH/DoT：dns.alidns.com）
-DOMAIN,dns.alidns.com # 阿里云 - DoH/DoT（dns.alidns.com）
-
-# 腾讯 DNSPod 公共 DNS（119.29.29.29 / 119.28.28.28；官方 DoH/DoT：dns.pub / doh.pub / dot.pub）
-DOMAIN,dns.pub # 腾讯 DNSPod - DoH / JSON 接口
-DOMAIN,doh.pub # 腾讯 DNSPod - DoH
-DOMAIN,sm2.doh.pub # 腾讯 DNSPod - DoH（SM2 国密）
-DOMAIN,dot.pub # 腾讯 DNSPod - DoT
-
-# 百度公共 DNS（180.76.76.76；支持 DoH / DoT：doh.baidu.com / dot.baidu.com）
-DOMAIN,dns.baidu.com # 百度公共 DNS - JSON/DoH
-DOMAIN,doh.baidu.com # 百度公共 DNS - DoH
-DOMAIN,dot.baidu.com # 百度公共 DNS - DoT
-
-# 360 安全公共 DNS（101.226.4.6 / 218.30.118.6 等；官方 DoH/DoT：doh.360.cn / dot.360.cn）
-DOMAIN,dns.360.cn # 360 公共 DNS - DNS/DoH
-DOMAIN,doh.360.cn # 360 公共 DNS - DoH
-DOMAIN,dot.360.cn # 360 公共 DNS - DoT
-DOMAIN,dns.360.net # 360 公共 DNS - 备用域名
-DOMAIN,doh.360.net # 360 公共 DNS - DoH 备用
-DOMAIN,dot.360.net # 360 公共 DNS - DoT 备用
-
-# OneDNS 公共 DNS（117.50.10.10 / 52.80.52.52 等；纯净版 / 拦截版）
-DOMAIN,doh.onedns.net # OneDNS - DoH（拦截版）
-DOMAIN,doh-pure.onedns.net # OneDNS - DoH（纯净版）
-DOMAIN,dot.onedns.net # OneDNS - DoT（拦截版）
-DOMAIN,dot-pure.onedns.net # OneDNS - DoT（纯净版）
-
-# SDNS / CFIEC（国家/学术网络公共 DNS，含加密解析）
-DOMAIN,dot.sdns.cn # SDNS - CNNIC - DoT
-DOMAIN,dns.cfiec.net # CFIEC 公共 DNS - DoH/DoT
-
-
-# ----------------------------------------------------
-# 中国 DNS（公共递归 DNS / DoH / DoT）- 仅 IP / IPv6
-# ----------------------------------------------------
-
-# 114DNS 公共递归 DNS
-IP-CIDR,114.114.114.114/32 # 114DNS
-IP-CIDR,114.114.115.115/32 # 114DNS
-
-# CNNIC SDNS（安全 DNS，公共递归）
-IP-CIDR,1.2.4.8/32 # CNNIC SDNS
-IP-CIDR,210.2.4.8/32 # CNNIC SDNS
-
-# CFIEC / China IPv6 Public DNS（仅 IPv6）
-IP-CIDR6,240c::6666/64 # CFIEC IPv6 Public DNS
-IP-CIDR6,240c::6644/64 # CFIEC IPv6 Public DNS
-
-# CNNIC IPv6 公共 DNS（递归节点）
-IP-CIDR6,2001:dc7:1000::1/64 # CNNIC IPv6 DNS
-
-# 阿里云公共 DNS（AliDNS：223.5.5.5 / 223.6.6.6）
-IP-CIDR,223.5.5.5/32 # AliDNS 公共 DNS
-IP-CIDR,223.6.6.6/32 # AliDNS 公共 DNS
-IP-CIDR6,2400:3200::1/64 # AliDNS IPv6
-IP-CIDR6,2400:3200:baba::1/64 # AliDNS IPv6
-
-# 腾讯 DNSPod 公共 DNS+（119.29.29.29 / 119.28.28.28 / 182.254.x.x）
-IP-CIDR,119.29.29.29/32 # DNSPod Public DNS+
-IP-CIDR,119.28.28.28/32 # DNSPod Public DNS+
-IP-CIDR,182.254.116.116/32 # DNSPod Public DNS+
-IP-CIDR,182.254.118.118/32 # DNSPod Public DNS+
-IP-CIDR6,2402:4e00::/64 # DNSPod IPv6 公共 DNS
-IP-CIDR,1.12.12.12/32 # DNSPod - DoH/DoT 节点
-IP-CIDR,120.53.53.53/32 # DNSPod - DoH/DoT 节点
-
-# 百度公共 DNS（180.76.76.76）
-IP-CIDR,180.76.76.76/32 # Baidu 公共 DNS
-IP-CIDR6,2400:da00::6666/64 # Baidu 公共 DNS IPv6
-
-# 360 安全公共 DNS / DNS派（电信 / 联通 / 移动 Anycast 节点）
-IP-CIDR,101.198.198.198/32 # 360 安全 DNS / DoH 引导
-IP-CIDR,101.198.199.200/32 # 360 安全 DNS / DoH 引导
-IP-CIDR,101.226.4.6/32 # 360 / DNS派 公共 DNS
-IP-CIDR,218.30.118.6/32 # 360 / DNS派 公共 DNS
-IP-CIDR,123.125.81.6/32 # 360 / DNS派 公共 DNS
-IP-CIDR,140.207.198.6/32 # 360 / DNS派 公共 DNS
-
-# OneDNS 公共 DNS（纯净版 / 拦截版）
-# 官方 / 主力 IPv4
-IP-CIDR,117.50.11.11/32 # OneDNS 拦截版
-IP-CIDR,117.50.22.22/32 # OneDNS 拦截版
-IP-CIDR,117.50.10.10/32 # OneDNS 纯净版
-IP-CIDR,117.50.20.20/32 # OneDNS 纯净版
-IP-CIDR,52.80.52.52/32 # OneDNS 纯净版
-IP-CIDR,52.80.66.66/32 # OneDNS 拦截版
-
-# OneDNS 早期仍可用 IPv4（官方文章注明“之前官方的还可使用”）
-IP-CIDR,112.124.47.27/32 # OneDNS 旧版南方节点
-IP-CIDR,114.215.126.16/32 # OneDNS 旧版北方节点
-
-# OneDNS IPv6（纯净 / 拦截）
-IP-CIDR6,2400:7fc0:849e:200::8/128 # OneDNS IPv6 纯净版
-IP-CIDR6,2404:c2c0:85d8:901::8/128 # OneDNS IPv6 纯净版
-IP-CIDR6,2400:7fc0:849e:200::4/128 # OneDNS IPv6 拦截版
-IP-CIDR6,2404:c2c0:85d8:901::4/128 # OneDNS IPv6 拦截版
-
-# 红鱼 Rubyfish 公共加密 DNS（DoH / DoT）
-IP-CIDR,118.89.110.78/32 # Rubyfish 公共 DNS - DoH/DoT 节点
-IP-CIDR,47.96.179.163/32 # Rubyfish 公共 DNS - DoH/DoT 节点
-IP-CIDR,115.159.131.230/32 # Rubyfish 公共 DNS - DoT 节点
-
-# TUNA
-IP-CIDR,101.6.6.6/32 # TUNA DNS（教育网，半公共）
-IP-CIDR6,2001:da8::666/128 # TUNA DNS IPv6（教育网，半公共）
+DOMAIN-SUFFIX,dns.cn
+DOMAIN-SUFFIX,dns.114dns.com
+DOMAIN-SUFFIX,doh.114dns.com
+DOMAIN-SUFFIX,dns114.cn
+DOMAIN-SUFFIX,dns.alidns.com
+DOMAIN-SUFFIX,dns.pub
+DOMAIN-SUFFIX,doh.pub
+DOMAIN-SUFFIX,sm2.doh.pub
+DOMAIN-SUFFIX,dot.pub
+DOMAIN-SUFFIX,dns.baidu.com
+DOMAIN-SUFFIX,doh.baidu.com
+DOMAIN-SUFFIX,dot.baidu.com
+DOMAIN-SUFFIX,dns.360.cn
+DOMAIN-SUFFIX,doh.360.cn
+DOMAIN-SUFFIX,dot.360.cn
+DOMAIN-SUFFIX,dns.360.net
+DOMAIN-SUFFIX,doh.360.net
+DOMAIN-SUFFIX,dot.360.net
+DOMAIN-SUFFIX,doh.onedns.net
+DOMAIN-SUFFIX,doh-pure.onedns.net
+DOMAIN-SUFFIX,dot.onedns.net
+DOMAIN-SUFFIX,dot-pure.onedns.net
+DOMAIN-SUFFIX,dot.sdns.cn
+DOMAIN-SUFFIX,dns.cfiec.net
+IP-CIDR,114.114.114.114/32
+IP-CIDR,114.114.115.115/32
+IP-CIDR,1.2.4.8/32
+IP-CIDR,210.2.4.8/32
+IP-CIDR6,240c::6666/64
+IP-CIDR6,240c::6644/64
+IP-CIDR6,2001:dc7:1000::1/64
+IP-CIDR,223.5.5.5/32
+IP-CIDR,223.6.6.6/32
+IP-CIDR6,2400:3200::1/64
+IP-CIDR6,2400:3200:baba::1/64
+IP-CIDR,119.29.29.29/32
+IP-CIDR,119.28.28.28/32
+IP-CIDR,182.254.116.116/32
+IP-CIDR,182.254.118.118/32
+IP-CIDR6,2402:4e00::/64
+IP-CIDR,1.12.12.12/32
+IP-CIDR,120.53.53.53/32
+IP-CIDR,180.76.76.76/32
+IP-CIDR6,2400:da00::6666/64
+IP-CIDR,101.198.198.198/32
+IP-CIDR,101.198.199.200/32
+IP-CIDR,101.226.4.6/32
+IP-CIDR,218.30.118.6/32
+IP-CIDR,123.125.81.6/32
+IP-CIDR,140.207.198.6/32
+IP-CIDR,117.50.11.11/32
+IP-CIDR,117.50.22.22/32
+IP-CIDR,117.50.10.10/32
+IP-CIDR,117.50.20.20/32
+IP-CIDR,52.80.52.52/32
+IP-CIDR,52.80.66.66/32
+IP-CIDR,112.124.47.27/32
+IP-CIDR,114.215.126.16/32
+IP-CIDR6,2400:7fc0:849e:200::8/128
+IP-CIDR6,2404:c2c0:85d8:901::8/128
+IP-CIDR6,2400:7fc0:849e:200::4/128
+IP-CIDR6,2404:c2c0:85d8:901::4/128
+IP-CIDR,118.89.110.78/32
+IP-CIDR,47.96.179.163/32
+IP-CIDR,115.159.131.230/32
+IP-CIDR,101.6.6.6/32
+IP-CIDR6,2001:da8::666/128
