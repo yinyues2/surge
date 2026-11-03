@@ -1,0 +1,127 @@
+name: Sync AI rules
+
+on:
+  schedule:
+    # 17:20 UTC = 01:20 Asia/Shanghai, after the main Clash sync at 01:00.
+    - cron: '20 17 * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/sync-ai-rules.yml'
+
+permissions: {}
+
+concurrency:
+  group: sync-ai-rules-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Validate and mirror the original Surge AI rules URL
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+      - name: Check out the latest Surge main branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Check out the public Clash source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: yinyues2/Clash
+          ref: main
+          path: .ai-source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: .ai-source/requirements-ai-sync.txt
+
+      - name: Install the source validator dependencies
+        run: python -m pip --disable-pip-version-check install --retries 3 --timeout 30 -r .ai-source/requirements-ai-sync.txt
+
+      - name: Validate both source formats and mirror AI.list
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import sys
+          import tempfile
+
+          source = Path('.ai-source')
+          sys.path.insert(0, str((source / 'scripts').resolve()))
+          from sync_ai_rules import parse_payload, parse_text_rules
+
+          target = Path('AI.list')
+          clash_bytes = (source / 'AI_No_Resolve.yaml').read_bytes()
+          surge_bytes = (source / 'Surge/AI.list').read_bytes()
+          previous_bytes = target.read_bytes()
+          clash_rules = parse_payload(clash_bytes.decode('utf-8'), 'source Clash output')
+          surge_rules = parse_text_rules(surge_bytes.decode('utf-8'), 'source Surge output')
+          previous_rules = parse_text_rules(previous_bytes.decode('utf-8'), 'previous Surge output')
+
+          if clash_rules != surge_rules:
+              raise SystemExit('Source Clash and Surge rule sets differ; AI.list was not changed.')
+          if len(surge_rules) * 5 < len(previous_rules) * 4:
+              raise SystemExit('Rule count fell by more than 20%; review before updating AI.list.')
+
+          if previous_bytes == surge_bytes:
+              print(f'Unchanged: {len(surge_rules)} unique rules.')
+          else:
+              temporary = None
+              try:
+                  with tempfile.NamedTemporaryFile(dir=target.parent, prefix='.ai-mirror-', delete=False) as handle:
+                      temporary = Path(handle.name)
+                      handle.write(surge_bytes)
+                      handle.flush()
+                      os.fsync(handle.fileno())
+                  temporary.chmod(0o644)
+                  os.replace(temporary, target)
+              finally:
+                  if temporary is not None:
+                      temporary.unlink(missing_ok=True)
+              print(f'Updated AI.list: {len(previous_rules)} -> {len(surge_rules)} unique rules; source bytes preserved.')
+          PY
+
+      - name: Commit and push changed AI.list
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          git add -- AI.list
+          if git diff --cached --quiet -- AI.list; then
+            printf '%s\n' 'AI.list is unchanged; no commit was created.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git diff --cached --check -- AI.list
+
+          # Do not publish over changes made while the mirror was being prepared.
+          git fetch --no-tags origin refs/heads/main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ]; then
+            printf '%s\n' '::error::main changed while AI.list was prepared. Re-run this workflow against the latest main branch.'
+            exit 1
+          fi
+
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit --only -m 'chore: sync AI rules from Clash' -- AI.list
+
+          # A concurrent push or branch protection must fail without force-push.
+          git push origin HEAD:refs/heads/main
+          printf '%s\n' 'Updated the original surge/main/AI.list from the validated Clash outputs.' >> "$GITHUB_STEP_SUMMARY"
