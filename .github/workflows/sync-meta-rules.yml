@@ -1,0 +1,106 @@
+name: Sync Meta rules
+
+on:
+  schedule:
+    # 18:30 UTC = 02:30 Asia/Shanghai, after Clash Meta sync at 02:10.
+    - cron: '30 18 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-meta-rules.yml'
+
+permissions: {}
+
+concurrency:
+  group: sync-meta-rules-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Mirror Meta rules from Clash to Surge
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out Surge main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Check out Clash source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: yinyues2/Clash
+          ref: main
+          path: .meta-source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+
+      - name: Install parser dependency
+        run: python -m pip --disable-pip-version-check install PyYAML==6.0.3
+
+      - name: Validate Meta source and copy Surge mirror
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import sys
+          import tempfile
+
+          source = Path(".meta-source")
+          sys.path.insert(0, str((source / "scripts").resolve()))
+          from sync_ai_rules import parse_payload, parse_text_rules
+          target = Path("Meta.list")
+          clash = parse_payload((source / "Meta_No_Resolve.yaml").read_text(encoding="utf-8"), "Meta Clash")
+          new_bytes = (source / "Surge/Meta.list").read_bytes()
+          new = parse_text_rules(new_bytes.decode("utf-8"), "Meta Surge")
+          if clash != new or len(new) < 500:
+              raise SystemExit("Meta source mismatch or implausibly small rule set")
+          previous_bytes = target.read_bytes() if target.exists() else b""
+          if previous_bytes:
+              previous = parse_text_rules(previous_bytes.decode("utf-8"), "Previous Meta Surge")
+              if len(new) < 0.8 * len(previous):
+                  raise SystemExit("Meta Surge rules fell by >20%; retain old file")
+          if new_bytes != previous_bytes:
+              with tempfile.NamedTemporaryFile(dir=target.parent, prefix=".meta-mirror-", delete=False) as f:
+                  temp = Path(f.name)
+                  f.write(new_bytes)
+                  f.flush()
+                  os.fsync(f.fileno())
+              temp.chmod(0o644)
+              os.replace(temp, target)
+              print(f"Mirrored {len(new)} Meta rules")
+          else:
+              print(f"Unchanged: {len(new)} Meta rules")
+          PY
+
+      - name: Publish Meta.list if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -- Meta.list
+          if git diff --cached --quiet -- Meta.list; then
+            echo 'Meta Surge mirror unchanged.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git diff --cached --check -- Meta.list
+          git fetch --no-tags origin refs/heads/main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ]; then
+            echo '::error::Surge main changed; rerun to avoid stale commit.'
+            exit 1
+          fi
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit --only -m 'chore: sync Meta rules from Clash' -- Meta.list
+          git push origin HEAD:refs/heads/main
