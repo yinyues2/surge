@@ -1,0 +1,106 @@
+name: Sync Google rules
+
+on:
+  schedule:
+    # 17:50 UTC = 01:50 Asia/Shanghai, after Clash Google sync at 01:30.
+    - cron: '50 17 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-google-rules.yml'
+
+permissions: {}
+
+concurrency:
+  group: sync-google-rules-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Mirror Google rules from Clash to Surge
+    if: ${{ github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out Surge main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Check out Clash source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: yinyues2/Clash
+          ref: main
+          path: .google-source
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+
+      - name: Install parser dependency
+        run: python -m pip --disable-pip-version-check install PyYAML==6.0.3
+
+      - name: Validate Google source and copy Surge mirror
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import sys
+          import tempfile
+
+          source = Path(".google-source")
+          sys.path.insert(0, str((source / "scripts").resolve()))
+          from sync_ai_rules import parse_payload, parse_text_rules
+          target = Path("Google.list")
+          clash = parse_payload((source / "Google_No_Resolve.yaml").read_text(encoding="utf-8"), "Google Clash")
+          new_bytes = (source / "Surge/Google.list").read_bytes()
+          new = parse_text_rules(new_bytes.decode("utf-8"), "Google Surge")
+          if clash != new or len(new) < 700:
+              raise SystemExit("Google source mismatch or implausibly small rule set")
+          previous_bytes = target.read_bytes() if target.exists() else b""
+          if previous_bytes:
+              previous = parse_text_rules(previous_bytes.decode("utf-8"), "Previous Google Surge")
+              if len(new) < 0.8 * len(previous):
+                  raise SystemExit("Google Surge rules fell by >20%; retain old file")
+          if new_bytes != previous_bytes:
+              with tempfile.NamedTemporaryFile(dir=target.parent, prefix=".google-mirror-", delete=False) as f:
+                  temp = Path(f.name)
+                  f.write(new_bytes)
+                  f.flush()
+                  os.fsync(f.fileno())
+              temp.chmod(0o644)
+              os.replace(temp, target)
+              print(f"Mirrored {len(new)} Google rules")
+          else:
+              print(f"Unchanged: {len(new)} Google rules")
+          PY
+
+      - name: Publish Google.list if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -- Google.list
+          if git diff --cached --quiet -- Google.list; then
+            echo 'Google Surge mirror unchanged.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git diff --cached --check -- Google.list
+          git fetch --no-tags origin refs/heads/main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ]; then
+            echo '::error::Surge main changed; rerun to avoid stale commit.'
+            exit 1
+          fi
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit --only -m 'chore: sync Google rules from Clash' -- Google.list
+          git push origin HEAD:refs/heads/main
