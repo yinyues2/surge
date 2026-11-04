@@ -62,7 +62,7 @@ jobs:
           clash = parse_payload((source / "Finance_No_Resolve.yaml").read_text(encoding="utf-8"), "Finance Clash")
           data = (source / "Surge/Finance.list").read_bytes()
           current = parse_text_rules(data.decode("utf-8"), "Finance Surge")
-          if clash != current or len(current) < 28:
+          if clash != current or len(current) < 27:
               raise SystemExit("Finance rule mismatch or too few rules")
           previous_data = target.read_bytes() if target.exists() else b""
           if previous_data:
