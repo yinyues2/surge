@@ -1,0 +1,102 @@
+name: Sync Finance rules
+
+on:
+  schedule:
+    # 19:20 UTC = 03:20 China Standard Time, after Clash Finance at 03:00.
+    - cron: '20 19 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/sync-finance-rules.yml'
+
+permissions: {}
+
+concurrency:
+  group: sync-finance-rules-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Mirror Finance rules from Clash to Surge
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out Surge main
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 1
+      - name: Check out Clash source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: yinyues2/Clash
+          ref: main
+          path: .finance-source
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.13'
+      - name: Install parser dependency
+        run: python -m pip --disable-pip-version-check install PyYAML==6.0.3
+      - name: Validate Finance source and mirror
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          import sys
+          import tempfile
+
+          source = Path(".finance-source")
+          sys.path.insert(0, str((source / "scripts").resolve()))
+          from sync_ai_rules import parse_payload, parse_text_rules
+
+          target = Path("Finance.list")
+          clash = parse_payload((source / "Finance_No_Resolve.yaml").read_text(encoding="utf-8"), "Finance Clash")
+          data = (source / "Surge/Finance.list").read_bytes()
+          current = parse_text_rules(data.decode("utf-8"), "Finance Surge")
+          if clash != current or len(current) < 28:
+              raise SystemExit("Finance rule mismatch or too few rules")
+          previous_data = target.read_bytes() if target.exists() else b""
+          if previous_data:
+              previous = parse_text_rules(previous_data.decode("utf-8"), "Previous Finance Surge")
+              if len(current) < len(previous) * 0.8:
+                  raise SystemExit("Finance rules shrank over 20 percent; retaining previous")
+          if previous_data == data:
+              print(f"Unchanged: {len(current)} Finance rules")
+          else:
+              with tempfile.NamedTemporaryFile(dir=target.parent, prefix=".finance-mirror-", delete=False) as handle:
+                  temp = Path(handle.name)
+                  handle.write(data)
+                  handle.flush()
+                  os.fsync(handle.fileno())
+              temp.chmod(0o644)
+              os.replace(temp, target)
+              print(f"Mirrored {len(current)} Finance rules")
+          PY
+      - name: Publish Finance.list if changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -- Finance.list
+          if git diff --cached --quiet -- Finance.list; then
+            echo 'Finance Surge mirror unchanged.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git diff --cached --check -- Finance.list
+          git fetch --no-tags origin refs/heads/main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse FETCH_HEAD)" ]; then
+            echo '::error::Surge main changed; rerun.'
+            exit 1
+          fi
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit --only -m 'chore: sync Finance rules from Clash' -- Finance.list
+          git push origin HEAD:refs/heads/main
