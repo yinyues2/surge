@@ -3,11 +3,11 @@ DOMAIN-SUFFIX,steamcontent.com      # steam下载
 DOMAIN-SUFFIX,videocaptioner.cn     # videocaptioner api
 DOMAIN-SUFFIX,5eplaycdn.com         # 5E game
 DOMAIN-SUFFIX,5eplay.com            # 5E game
-DOMAIN-SUFFIX,ngrok-free.dev        # Open WebUI
-DOMAIN-SUFFIX,asrootu.cn            # Open WebUI
 DOMAIN-SUFFIX,wawapii.com           # WawAPI
 DOMAIN-SUFFIX,tokenrhythm.studio    # tokenrhythm
 DOMAIN-SUFFIX,dingzhi01.cfd         # Shanhai
 DOMAIN-SUFFIX,shcdn.xyz             # Shanhai
 DOMAIN-SUFFIX,duoyi.com             # duoyi
 DOMAIN-SUFFIX,2980.com              # duoyi
+DOMAIN-SUFFIX,asrootu.si            # own
+DOMAIN-SUFFIX,kuromi.si             # own
